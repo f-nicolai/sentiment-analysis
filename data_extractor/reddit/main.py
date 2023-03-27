@@ -2,7 +2,7 @@ from json import loads
 import datetime
 import logging
 
-from reddit_extractor import RedditExtractor
+from reddit_extractor.reddit import RedditExtractor
 import google.cloud.logging
 
 client = google.cloud.logging.Client()
@@ -14,13 +14,20 @@ def reddit_extraction(request):
 
     r_client = RedditExtractor()
 
+    ignore_flairs = request_args.get('ignore_flairs')
+    if not bool(ignore_flairs):
+        ignore_flairs = []
+
     try :
         if request_args['type'] == 'intraday':
+
+
             r_client.last_submissions_data(
                 subreddit=request_args['subreddit'],
                 submissions_sorting=request_args['submissions_sorting'],
-                ignore_flairs=['Gain', 'YOLO', 'Earnings Thread', 'Loss', 'MEME', 'Shitpost', 'Daily Discussion',
-                               'Weekend Discussion'],
+                ignore_flairs = ignore_flairs
+                # ignore_flairs=['Gain', 'YOLO', 'Earnings Thread', 'Loss', 'MEME', 'Shitpost', 'Daily Discussion',
+                #                'Weekend Discussion'],
             )
         else:
             r_client.historical_submissions_and_comments(

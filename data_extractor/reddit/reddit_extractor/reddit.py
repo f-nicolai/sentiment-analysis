@@ -11,7 +11,7 @@ from pandas import DataFrame, to_datetime, read_csv, concat, json_normalize
 from datetime import datetime, timedelta
 
 from utils.miscellaneous import timeit
-from utils.gcp import create_bq_table_from_dataframe, upload_dataframe_to_gcs
+from utils.gcp import create_bq_table_from_dataframe, upload_dataframe_to_gcs, upload_dict_to_gcs
 from utils.ticker_detection import detect_tickers
 
 if environ.get('GCF_ENV'):
@@ -51,6 +51,74 @@ class RedditExtractor():
         self.extract_timestamp:str = None
         self.submissions_sorting:str = None
         self.run_id = uuid.uuid4().hex
+
+
+    def stream_submissions_to_gcs(self, subreddit: str):
+        logging.info(f'Starting streaming submissions for : {subreddit.upper()}')
+
+        subreddit_r = self.reddit.subreddit(subreddit)
+        self.subreddit_id = subreddit_r.id
+
+        try :
+            for sub in subreddit_r.stream.submissions(skip_existing=True):
+                new_submission,_ = self._submission_data_extraction(submission=sub)
+
+                if bool(new_submission):
+                    file_date = new_submission['created_utc']
+                    new_submission['created_utc'] = new_submission['created_utc'].isoformat()
+                    author = new_submission.pop('author')
+
+                    logging.info(f'Upload submission id : {new_submission["id"]} - created_utc: {new_submission["created_utc"]}')
+
+                    upload_dict_to_gcs(
+                        dictionary = new_submission,
+                        bucket_name='intraday-data-extraction',
+                        file_name=f'streaming/submissions/{file_date.strftime("%Y/%m/%d/%H:%M:%S")}_{new_submission["id"]}.json',
+                        project='sentiment-analysis-379718'
+                    )
+                    upload_dict_to_gcs(
+                        dictionary = author,
+                        bucket_name='intraday-data-extraction',
+                        file_name=f'streaming/authors/{file_date.strftime("%Y/%m/%d/%H:%M:%S")}_{author["fullname"]}.json',
+                        project='sentiment-analysis-379718'
+                    )
+        except Exception as e:
+            self.current = self.current_recovery
+            logging.error("Exception occurred", exc_info=True)
+
+    def stream_comments_to_gcs(self, subreddit: str):
+        logging.info(f'Starting streaming comments for : {subreddit.upper()}')
+
+        subreddit_r = self.reddit.subreddit(subreddit)
+        self.subreddit_id = subreddit_r.id
+
+        try :
+            for com in subreddit_r.stream.comments(skip_existing=True):
+                new_comment = self._comment_data_extraction(comment=com)
+
+                if bool(new_comment) :
+                    file_date = new_comment['created_utc']
+                    new_comment['created_utc'] = new_comment['created_utc'].isoformat()
+                    author = new_comment.pop('author')
+
+                    logging.info(f'Upload comment id : {new_comment["id"]} - created_utc: {new_comment["created_utc"]}')
+
+                    upload_dict_to_gcs(
+                        dictionary = new_comment,
+                        bucket_name='intraday-data-extraction',
+                        file_name=f'streaming/comments/{file_date.strftime("%Y/%m/%d/%H:%M:%S")}_{new_comment["id"]}.json',
+                        project='sentiment-analysis-379718'
+                    )
+                    upload_dict_to_gcs(
+                        dictionary = author,
+                        bucket_name='intraday-data-extraction',
+                        file_name=f'streaming/authors/{file_date.strftime("%Y/%m/%d/%H:%M:%S")}_{author["fullname"]}.json',
+                        project='sentiment-analysis-379718'
+                    )
+        except Exception as e:
+            self.current = self.current_recovery
+            logging.error("Exception occurred", exc_info=True)
+
 
     def historical_submissions_and_comments(self, subreddit: str, start_date: datetime, end_date: datetime,
                                             ignore_flairs: list = None, batch_size: int = 1000):
@@ -98,7 +166,7 @@ class RedditExtractor():
             authors=concat([submissions_authors, comments_authors])
         )
 
-        logging.info(f'Intraday extraction for {subreddit} DONE')
+        logging.info(f'Intraday extraction for {subreddit.upper()} - {submissions_sorting.upper()} DONE')
 
     @timeit
     def _subreddit_data(self, subreddit: praw.models.reddit.subreddit.Subreddit, submissions_sorting: str,
@@ -134,7 +202,7 @@ class RedditExtractor():
         return subreddit_data, submissions_data, comments_data
 
     def _submission_data_extraction(self, submission: praw.models.reddit.submission.Submission,
-                                    comments_sorting: str) -> (dict, list):
+                                    comments_sorting: str=None, with_comments:bool = True) -> (dict, list):
         submission_data = {}
         submission_data['id'] = submission.id
         submission_data['fullname'] = submission.fullname
@@ -153,13 +221,16 @@ class RedditExtractor():
         submission_data['stickied'] = submission.stickied
         submission_data['num_comments'] = submission.num_comments
 
-        submission.comment_sort = comments_sorting
-        submission.comments.replace_more(limit=10)
+        if with_comments:
+            submission.comment_sort = comments_sorting
+            submission.comments.replace_more(limit=10)
 
-        comments_data = [
-            self._comment_data_extraction(comment=comment)
-            for comment in submission.comments.list()
-            if comment.author and ((comment.author.name != 'VisualMod') or (comment.author.fullname != 't2_6hf2z55l'))]
+            comments_data = [
+                self._comment_data_extraction(comment=comment)
+                for comment in submission.comments.list()
+                if comment.author and ((comment.author.name != 'VisualMod') or (comment.author.fullname != 't2_6hf2z55l'))]
+        else :
+            comments_data = []
 
         return submission_data, comments_data
 
@@ -171,7 +242,6 @@ class RedditExtractor():
             comment_data['link_id'] = comment.link_id
             comment_data['fullname'] = comment.fullname
             comment_data['parent_id'] = comment.parent_id
-            comment_data['body'] = comment.body
             comment_data['score'] = comment.score
             comment_data['ups'] = comment.ups
             comment_data['downs'] = comment.downs
@@ -246,7 +316,7 @@ class RedditExtractor():
         upload_dataframe_to_gcs(
             dataframe=submissions,
             bucket_name='intraday-data-extraction',
-            file_name=f'reddit/submissions/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
+            file_name=f'reddit/mini_batch/submissions/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
             index=False,
             encoding='utf-8-sig'
         )
@@ -255,7 +325,7 @@ class RedditExtractor():
         upload_dataframe_to_gcs(
             dataframe=authors,
             bucket_name='intraday-data-extraction',
-            file_name=f'reddit/authors/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
+            file_name=f'reddit/mini_batch/authors/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
             index=False,
             encoding='utf-8-sig'
         )
@@ -264,7 +334,7 @@ class RedditExtractor():
         upload_dataframe_to_gcs(
             dataframe=comments,
             bucket_name='intraday-data-extraction',
-            file_name=f'reddit/comments/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
+            file_name=f'reddit/mini_batch/comments/{self.extract_day}/{self.submissions_sorting}_{self.timemstamp}_{self.run_id}.csv',
             index=False,
             encoding='utf-8-sig'
         )
@@ -414,13 +484,11 @@ class RedditExtractor():
 
         return comments
 
-    @staticmethod
-    def _request_pushshift_and_retry(url) -> requests.Response:
+    def _request_pushshift_and_retry(self,url) -> requests.Response:
         response = requests.get(url=url)
 
         while response.status_code in (429,524):
-            print(url)
-            print(response.status_code)
+            print(f'{response.status_code} - {datetime.fromtimestamp(self.current)}')
             time.sleep(2)
             response = requests.get(url=url)
 

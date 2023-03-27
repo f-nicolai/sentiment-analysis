@@ -1,3 +1,4 @@
+from json import dumps
 from google.cloud import bigquery
 from google.cloud import storage
 from typing import Union
@@ -23,7 +24,7 @@ def upload_dataframe_to_gcs(dataframe: DataFrame, bucket_name: str, file_name: s
     output_destination_blob.upload_from_string(dataframe.to_csv(**kwargs),'text/csv')
 
 
-def upload_file_to_gcs(filename: Union[str,Path], bucket_name: str, file_name: str, project: str = None) -> None:
+def upload_file_to_gcs(local_file_name: Union[str,Path], bucket_name: str, file_name: str, project: str = None) -> None:
     """
     Upload a file to GCS
     :param data: data to upload to GCS
@@ -38,7 +39,15 @@ def upload_file_to_gcs(filename: Union[str,Path], bucket_name: str, file_name: s
     output_destination_bucket = storage_client.get_bucket(bucket_name)
 
     output_destination_blob = output_destination_bucket.blob(file_name)
-    output_destination_blob.upload_from_filename(filename)
+    output_destination_blob.upload_from_filename(local_file_name)
+
+def upload_dict_to_gcs(dictionary: dict, bucket_name: str, file_name: str, project: str = None) -> None:
+    storage_client = storage.Client(project=project)
+
+    output_destination_bucket = storage_client.get_bucket(bucket_name)
+
+    output_destination_blob = output_destination_bucket.blob(file_name)
+    output_destination_blob.upload_from_string(dumps(dictionary))
 
 
 
