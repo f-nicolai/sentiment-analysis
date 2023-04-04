@@ -16,8 +16,8 @@ r_client = RedditExtractor()
 for subreddit in ['wallstreetbets', 'investing', 'WallStreetbetsELITE']:
     r_client.historical_submissions_and_comments(
         subreddit=subreddit,
-        start_date=datetime.datetime(2018,12, 31),
-        end_date=datetime.datetime(2021, 1, 29),
+        start_date=datetime.datetime(2021,11, 1),
+        end_date=datetime.datetime(2022, 10, 1),
         ignore_flairs=['Gain', 'YOLO', 'Earnings Thread', 'Loss', 'MEME', 'Shitpost'],
         batch_size=1000,
     )

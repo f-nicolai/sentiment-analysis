@@ -23,6 +23,13 @@ if __name__ == '__main__':
     )
 
     if args.type == 'submissions':
-        r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
+        try:
+            r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
+        except:
+            r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
+
     elif args.type =='comments':
-        r_client.stream_comments_to_gcs(subreddit=args.subreddit)
+        try:
+            r_client.stream_comments_to_gcs(subreddit=args.subreddit)
+        except:
+            r_client.stream_comments_to_gcs(subreddit=args.subreddit)

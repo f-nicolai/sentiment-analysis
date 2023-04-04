@@ -46,7 +46,7 @@ class RedditExtractor():
         self.until:int = None
         self.since:int = None
         self.current:int = None
-        self.current_recovery: str = None
+        self.current_recovery: int = None
         self.extract_day: str = None
         self.extract_timestamp:str = None
         self.submissions_sorting:str = None
@@ -351,14 +351,14 @@ class RedditExtractor():
             truncate=False,
             project='sentiment-analysis-379718'
         )
-        logging.info(f'\t- Added submissions: {comments.shape[0]}')
+        logging.info(f'\t- Added comments: {comments.shape[0]}')
         create_bq_table_from_dataframe(
             dataframe=comments,
             table_name='sentiment-analysis-379718.reddit.comments',
             truncate=False,
             project='sentiment-analysis-379718'
         )
-        logging.info(f'\t- Added submissions: {authors.shape[0]}')
+        logging.info(f'\t- Added authors: {authors.shape[0]}')
         create_bq_table_from_dataframe(
             dataframe=authors,
             table_name='sentiment-analysis-379718.reddit.authors',

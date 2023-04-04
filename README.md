@@ -11,6 +11,8 @@ Reddit extraction :
   - [x] Deploy above code on VM to run 24/7
   - [x] upload each comment & submisison on a separated file on GCS 
     - [ ] Later replace GCS with Postgres
+  - [ ] Change storage type to standard because to heavy pricing
+  - [ ] Upload logs on error
   - [ ] Add retries to streaming
   - [ ] parametrize historical extraction to handle 2 in // just with arguments
   - [ ] Dockerize everything on VM
