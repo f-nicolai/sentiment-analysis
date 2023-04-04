@@ -11,6 +11,9 @@ Reddit extraction :
   - [x] Deploy above code on VM to run 24/7
   - [x] upload each comment & submisison on a separated file on GCS 
     - [ ] Later replace GCS with Postgres
+  - [ ] Add retries to streaming
+  - [ ] parametrize historical extraction to handle 2 in // just with arguments
+  - [ ] Dockerize everything on VM
   - [ ] Modify `last_submissions_data` cloud function to only update post's up votes & meta data (should be much faster => every 5 mn ?
   - [ ] Dockerize code on VM, and add auto reboot if job fails
   - [ ] Package code properly to remove the `sys.path.append()` que je ne saurais voir

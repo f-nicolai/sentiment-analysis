@@ -344,18 +344,21 @@ class RedditExtractor():
         # self._save_authors_data(authors=authors)
 
     def _save_batch_data(self, submissions: DataFrame, authors: DataFrame, comments: DataFrame):
+        logging.info(f'\t- Added submissions: {submissions.shape[0]}')
         create_bq_table_from_dataframe(
             dataframe=submissions,
             table_name='sentiment-analysis-379718.reddit.submissions',
             truncate=False,
             project='sentiment-analysis-379718'
         )
+        logging.info(f'\t- Added submissions: {comments.shape[0]}')
         create_bq_table_from_dataframe(
             dataframe=comments,
             table_name='sentiment-analysis-379718.reddit.comments',
             truncate=False,
             project='sentiment-analysis-379718'
         )
+        logging.info(f'\t- Added submissions: {authors.shape[0]}')
         create_bq_table_from_dataframe(
             dataframe=authors,
             table_name='sentiment-analysis-379718.reddit.authors',
