@@ -1,7 +1,7 @@
 from joblib import Parallel, delayed
 from google.cloud import storage
 
-from utils.gcp import load_csv_gcs_file_to_bq
+from gcp import upload_file_to_gcs
 
 client = storage.Client(project='sentiment-analysis-379718')
 extraction_type = 'comments'
@@ -12,7 +12,7 @@ tbl_names = [f.split('/')[1] + '_' + f.split('/')[-1].split('_')[0] + '_' + ''.j
              f.split('/')[-1].split('_')[1].replace('-', '_') for f in files]
 
 Parallel(n_jobs=100, prefer="threads")(
-    delayed(load_csv_gcs_file_to_bq)('trash', n, 'intraday-data-extraction', f,'sentiment-analysis-379718') for n, f in zip(tbl_names, files)
+    delayed(upload_file_to_gcs)('trash', n, 'intraday-data-extraction', f,'sentiment-analysis-379718') for n, f in zip(tbl_names, files)
 )
 
 

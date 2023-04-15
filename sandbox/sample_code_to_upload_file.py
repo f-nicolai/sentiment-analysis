@@ -3,7 +3,7 @@ from datetime import  datetime
 import sys
 sys.path.append(f'{Path(__file__).parent.parent}')
 
-from utils.gcp import upload_file_to_gcs
+from gcp import upload_file_to_gcs
 
 
 if __name__ =='__main__':

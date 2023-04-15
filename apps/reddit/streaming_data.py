@@ -6,6 +6,7 @@ sys.path.append(f'{Path(__file__).parent.parent.parent}')
 import argparse
 import logging
 from reddit_extractor.reddit import RedditExtractor
+
 parser = argparse.ArgumentParser()
 parser.add_argument("-t", "--type", help="type: submissions or comments")
 parser.add_argument("-s", "--subreddit", help="subreddit to listen to")
@@ -23,13 +24,7 @@ if __name__ == '__main__':
     )
 
     if args.type == 'submissions':
-        try:
-            r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
-        except:
-            r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
+        r_client.stream_submissions_to_gcs(subreddit=args.subreddit)
 
     elif args.type =='comments':
-        try:
-            r_client.stream_comments_to_gcs(subreddit=args.subreddit)
-        except:
-            r_client.stream_comments_to_gcs(subreddit=args.subreddit)
+        r_client.stream_comments_to_gcs(subreddit=args.subreddit)

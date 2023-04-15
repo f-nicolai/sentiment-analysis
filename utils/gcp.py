@@ -6,7 +6,7 @@ from pathlib import Path
 from datetime import datetime
 from pandas import DataFrame
 
-def upload_dataframe_to_gcs(dataframe: DataFrame, bucket_name: str, file_name: str, project: str = None, **kwargs) -> None:
+def upload_dataframe_to_gcs(dataframe: DataFrame, bucket_name: str, file_name: str, project: str = 'sentiment-analysis-379718', **kwargs) -> None:
     """
     Upload a file to GCS
     :param data: data to upload to GCS
@@ -24,7 +24,7 @@ def upload_dataframe_to_gcs(dataframe: DataFrame, bucket_name: str, file_name: s
     output_destination_blob.upload_from_string(dataframe.to_csv(**kwargs),'text/csv')
 
 
-def upload_file_to_gcs(local_file_name: Union[str,Path], bucket_name: str, file_name: str, project: str = None) -> None:
+def upload_file_to_gcs(local_file_name: Union[str,Path], bucket_name: str, file_name: str, project: str = 'sentiment-analysis-379718') -> None:
     """
     Upload a file to GCS
     :param data: data to upload to GCS
@@ -41,7 +41,7 @@ def upload_file_to_gcs(local_file_name: Union[str,Path], bucket_name: str, file_
     output_destination_blob = output_destination_bucket.blob(file_name)
     output_destination_blob.upload_from_filename(local_file_name)
 
-def upload_dict_to_gcs(dictionary: dict, bucket_name: str, file_name: str, project: str = None) -> None:
+def upload_dict_to_gcs(dictionary: dict, bucket_name: str, file_name: str, project: str = 'sentiment-analysis-379718') -> None:
     storage_client = storage.Client(project=project)
 
     output_destination_bucket = storage_client.get_bucket(bucket_name)
@@ -50,12 +50,13 @@ def upload_dict_to_gcs(dictionary: dict, bucket_name: str, file_name: str, proje
     output_destination_blob.upload_from_string(dumps(dictionary))
 
 
+
 def create_bq_table_from_dataframe(
         dataframe: DataFrame,
         table_name: str,
+        project:str='sentiment-analysis-379718',
         truncate: bool = False,
         expiration_date: datetime = None,
-        project:str = None
 ) -> None:
     """
     Creates a bigquery tables from a pandas DataFrame
@@ -83,16 +84,49 @@ def create_bq_table_from_dataframe(
         client.update_table(table, ["expires"])
 
 
-def load_csv_gcs_file_to_bq(dataset: str, tbl_name: str, bucket: str, gcs_file_name: str,project:str):
-    print(f'Loading table: {tbl_name} - STARTING')
+def remove_previous_reddit_data_updates(table:str, project:str='sentiment-analysis-379718'):
+    query = f"""
+        create or replace table `{project}.reddit.{table}` as
+            select *, except(rank_update)
+            from (
+                select *, 
+                row_number() over(partition by id order by upload_datetime desc) as rank_update
+                from `{project}.reddit.{table}`
+            )
+            where rank_update = 1
+    """
+
     client = bigquery.Client(project=project)
-    job_config = bigquery.LoadJobConfig(
-        autodetect=True,
-        allow_quoted_newlines=True,
-        source_format=bigquery.SourceFormat.CSV,
-    )
-    load_job = client.load_table_from_uri(
-        f'gs://{bucket}/{gcs_file_name}', f'{dataset}.{tbl_name}',job_config=job_config
-    )
-    load_job.result()
-    print(f'Loading table: {tbl_name} - {load_job.state}')
+    client.query(query).result()
+
+def query_bq(query_or_file:Union[str,Path],project:str='sentiment-analysis-379718',replace:dict=None):
+    if '.sql' in str(query_or_file):
+        with open(query_or_file) as f:
+            sql_query = f.read()
+        if replace:
+            for k,v in replace.items():
+                sql_query = sql_query.replace(k,v)
+    else:
+        sql_query = query_or_file
+
+    client = bigquery.Client(project=project)
+    return client.query(sql_query).result().to_dataframe()
+
+
+
+
+def download_file_as_string_from_gcs(storage_file_name: str, bucket_name: str, project: str = 'sentiment-analysis-379718') -> str:
+    """
+    Download a file from GCS
+    :param storage_file_name: file to retrieve form GCS
+    :param bucket_name: Name of the bucket to retrieve the file from
+    :param project: name of the project
+    :return: None
+    """
+
+    storage_client = storage.Client(project=project)
+    bucket = storage_client.get_bucket(bucket_name)
+    blob = bucket.blob(storage_file_name)
+    return blob.download_as_string()
+
+

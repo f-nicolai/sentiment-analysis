@@ -4,42 +4,48 @@ sentiment-analysis-trading
 TODO
 ====
 
-Reddit extraction :
+## GLOBAL :
+
+### CORE
+ - [x] Update Crontab for a daily docker cleanup
+ - Comment code
+ - [ ] Optimize Dockerfile image
+   - Alpine is not suited with python !
+
+### ticker detection
+    - [x] Add companies' name to ticker detection
+    - [ ] Broaden outside US Stock Exchange
+
+
+Reddit's extraction :
 -------------------
-- GLOBAL
+
+### CORE :
   - [x] Stream new comments & submissions continuously via  `reddit.stream.comments`
   - [x] Deploy above code on VM to run 24/7
-  - [x] upload each comment & submisison on a separated file on GCS 
-    - [ ] Later replace GCS with Postgres
-  - [ ] Change storage type to standard because to heavy pricing
-  - [ ] Upload logs on error
-  - [ ] Add retries to streaming
-  - [ ] parametrize historical extraction to handle 2 in // just with arguments
-  - [ ] Dockerize everything on VM
-  - [ ] Modify `last_submissions_data` cloud function to only update post's up votes & meta data (should be much faster => every 5 mn ?
-  - [ ] Dockerize code on VM, and add auto reboot if job fails
+  - [x] Dockerize code on VM, and add auto reboot if job fails
+  - [x] Change storage type to standard because to heavy pricing
   - [ ] Package code properly to remove the `sys.path.append()` que je ne saurais voir
 
+### Historical extraction :
+  - [x] Load new files to BQ table
+  - [x] Once a day run a historical extraction on last 2 weeks to get updated submissions
+  - [x] Parametrize historical extraction to handle 2 in // just with arguments
 
-- Enhance ticker detection
-    - [ ] Add name to ticker detection
-
-Historical extraction :
------------------------
-
--   [x] Load new files to BQ table
--   [ ] At the end of each day run the batch of the last day to complete BQ table
-
-Daily extraction :
-------------------
-- [x] Upload each 10mn batch to GCS
-- ~~[ ] Add feature to extract for weekend & daily subs~~
+### Daily extraction :
+  - ~~[x] Upload each 10mn batch to GCS~~
+    - ~~[ ] Add feature to extract for weekend & daily subs~~
+  - [x] Stream each comment & submisison and upload it to GCS 
+    - [x] Add retries to streaming
 - [ ] Add the data to postgres for daily alerting
+    - [ ] Update submissions metadata every 10 minutes 
+
 
 New data sources :
 ------------------
 
 - [ ] Add Bloomberg & other financial websites
+- [ ] Add Crypto's subreddits
 
 R&D :
 -----
@@ -69,6 +75,14 @@ Cloud Function :
   - Authorize local call to cloud function: `curl -H "Authorization: bearer $(gcloud auth print-identity-token)" -w "\n" $URL`
   - Add arguments to call: `curl -H "Authorization: bearer $(gcloud auth print-identity-token)" -w "\n" $URL?subreddit=wallstreetbets&type=intraday`
 
-VM :
- - Activate venv : `source venv/bin/activate`
- - Run streaming code with prompt back : `nohup python data_extractor/reddit/streaming_data.py -t submissions -s wallstreetbets`
+Docker :
+  - Build image from project root`sudo docker build --force-rm -t data_extraction:latest -f apps/Dockerfile .`
+  - Retrieve historical data : `sudo docker run -d --name historical_full --restart=on-failure data_extraction python apps/reddit/history_extraction.py --mode=full`
+  - (Scheduled daily) Retrieve historical on last 2 weeks : `sudo docker run -d --name historical_ltw --restart=on-failure data_extraction python apps/reddit/history_extraction.py --mode=ltw`
+  - (Scheduled every 10mn) Retrieve last submissions metadata : `sudo docker run -d --name submissions_metadata_update --restart=on-failure data_extraction python apps/reddit/update_submissions_metadata.py`
+  - Stream submissions : `sudo docker run -d --name wsb_submissions --restart=unless-stopped data_extraction python apps/reddit/streaming_data.py --type=submissions --subreddit=wallstreetbets`
+  - Stream comments : `sudo docker run -d --name wsb_comments --restart=unless-stopped data_extraction python apps/reddit/streaming_data.py --type=comments --subreddit=wallstreetbets`
+  - 
+  - (daily schedule) Clean all unused images & containers `sudo docker system prune -f`
+  - Delete images with pattern  `sudo docker images -a | grep "<none>" | awk '{print $3}' | xargs sudo docker rmi`
+    
