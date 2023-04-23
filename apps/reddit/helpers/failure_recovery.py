@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from google.api_core.exceptions import NotFound
 from json import loads
 
-from utils.gcp import download_file_as_string_from_gcs
+from sa_tools.gcp import download_file_as_string_from_gcs
 from helpers.subreddit_information import all_subreddits
 
 def retrieve_logs_and_setup_dates_for_historical(mode: str) -> (datetime, datetime, list[str]):

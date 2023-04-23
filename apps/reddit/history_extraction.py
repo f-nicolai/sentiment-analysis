@@ -18,7 +18,7 @@ parser.add_argument("-m", "--mode", help="mode for historical data retrieval: fu
 logging.basicConfig(
     filename=Path(__file__).parent / f'logs/reddit_historical_extraction.log',
     format='%(asctime)s - %(message)s',
-    datefmt='%d-%b-%y %H:%M:%S',
+    datefmt='%d-%m-%Y %H:%M:%S',
     level=logging.INFO
 )
 

@@ -9,9 +9,9 @@ from joblib import Parallel, delayed
 from pandas import DataFrame, to_datetime, concat, json_normalize
 from datetime import datetime, timedelta
 
-from utils.miscellaneous import timeit
-from utils.gcp import create_bq_table_from_dataframe, upload_dataframe_to_gcs, upload_dict_to_gcs
-from utils.ticker_detection import detect_tickers
+from sa_tools.miscellaneous import timeit
+from sa_tools.gcp import create_bq_table_from_dataframe, upload_dataframe_to_gcs, upload_dict_to_gcs
+from sa_tools.ticker_detection import detect_tickers
 
 if environ.get('GCF_ENV'):
     REDDIT_PERSONAL_USE_SCRIPT = environ.get('REDDIT_PERSONAL_USE_SCRIPT')

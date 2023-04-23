@@ -19,7 +19,7 @@ if __name__ == '__main__':
     logging.basicConfig(
         filename=Path(__file__).parent / f'logs/streaming_{args.type}.log',
         format='%(asctime)s - %(message)s',
-        datefmt='%d-%b-%y %H:%M:%S',
+        datefmt='%d-%m-%Y %H:%M:%S',
         level=logging.INFO
     )
 

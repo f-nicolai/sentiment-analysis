@@ -16,6 +16,9 @@ TODO
     - [x] Add companies' name to ticker detection
     - [ ] Broaden outside US Stock Exchange
 
+Stocks data extraction :
+-------------------
+    - [ ] Retrieve once a day every stock price per 1m via ALPHA VANGUARD API 
 
 Reddit's extraction :
 -------------------
@@ -38,12 +41,12 @@ Reddit's extraction :
   - [x] Stream each comment & submisison and upload it to GCS 
     - [x] Add retries to streaming
 - [ ] Add the data to postgres for daily alerting
-    - [ ] Update submissions metadata every 10 minutes 
+    - [x] Update submissions metadata every 10 minutes 
 
 
 New data sources :
 ------------------
-
+- [ ] Look at Alpha Vantage "Market News & Sentiment" which can offer news of specific subjects for FREE 
 - [ ] Add Bloomberg & other financial websites
 - [ ] Add Crypto's subreddits
 
@@ -56,6 +59,7 @@ R&D :
     - [ ] Add memory to remember which comment shave already been processed ?
     - [ ] Give full comments with their answers and ask model to give sentiment
       for each comment
+    - 
 
 Data eng:
 ---------
