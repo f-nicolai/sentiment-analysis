@@ -38,7 +38,6 @@ class RedditExtractor():
         self.until: int = None
         self.since: int = None
         self.current: int = None
-        self.current_recovery: int = None
         self.extract_day: str = None
         self.extract_timestamp: str = None
         self.submissions_sorting: str = None
@@ -53,7 +52,7 @@ class RedditExtractor():
         self.subreddit_id = subreddit_r.id
 
         for sub in subreddit_r.stream.submissions(skip_existing=True):
-            new_submission,_ = self._submission_data_extraction(submission=sub,with_comments=False)
+            new_submission, _ = self._submission_data_extraction(submission=sub, with_comments=False)
 
             if bool(new_submission):
                 new_submission, author = [x.to_dict(orient='records')[0] for x in self._format_submissions([new_submission], is_daily=True)]
@@ -113,7 +112,6 @@ class RedditExtractor():
         self.until = int(end_date.timestamp())
         self.since = int(start_date.timestamp())
         self.current = self.until
-        self.current_recovery = self.current
         self.mode = mode
 
         self.subreddit_id = self.reddit.subreddit(subreddit).id
@@ -142,11 +140,11 @@ class RedditExtractor():
             with_comments=False
         )
 
-        if len(submissions_data) >0 :
+        if len(submissions_data) > 0:
             submissions_data, _ = self._format_submissions(submissions=submissions_data, is_daily=True)
             submissions_data['upload_datetime'] = to_datetime(self.run_dt)
 
-            self._save_intraday_data(subreddit=subreddit,submissions=submissions_data)
+            self._save_intraday_data(subreddit=subreddit, submissions=submissions_data)
 
         logging.info(f'Intraday extraction for {subreddit.upper()} - {submissions_sorting.upper()} DONE')
 
@@ -331,43 +329,36 @@ class RedditExtractor():
             batch_size: int,
             ignore_flairs: list = None):
         while self.current >= self.since:
+            start = time.time()
 
+            raw_submissions = submissions = self._search_and_format_submissions(
+                subreddit=subreddit,
+                ignore_flairs=ignore_flairs,
+                batch_size=batch_size
+            )
             self.save_current_date_to_gcs(subreddit=subreddit)
 
-            try:
-                start = time.time()
-                submissions, authors_s = self._format_submissions(
-                    submissions=self._search_and_format_submissions(
-                        subreddit=subreddit,
-                        ignore_flairs=ignore_flairs,
-                        batch_size=batch_size
-                    )
+            submissions, authors_s = self._format_submissions(submissions=raw_submissions)
+
+            logging.info(f'Retrieved {submissions.shape[0]} submissions in: {str(timedelta(seconds=time.time() - start))}')
+
+            comments, authors_c = self._format_comments(
+                comments=self._search_comments_from_submissions_ids(
+                    submissions_ids=submissions['id'].to_list(),
                 )
-                logging.info(f'Retrieved {submissions.shape[0]} submissions in: {str(timedelta(seconds=time.time() - start))}')
+            )
+            logging.info(f'Retrieved {comments.shape[0]} comments in: {str(timedelta(seconds=time.time() - start))}')
 
-                comments, authors_c = self._format_comments(
-                    comments=self._search_comments_from_submissions_ids(
-                        submissions_ids=submissions['id'].to_list(),
-                    )
-                )
-                logging.info(f'Retrieved {comments.shape[0]} comments in: {str(timedelta(seconds=time.time() - start))}')
+            submissions['upload_datetime'] = self.run_dt
+            authors_s['upload_datetime'] = self.run_dt
+            comments['upload_datetime'] = self.run_dt
+            authors_c['upload_datetime'] = self.run_dt
 
-                submissions['upload_datetime'] = self.run_dt
-                authors_s['upload_datetime'] = self.run_dt
-                comments['upload_datetime'] = self.run_dt
-                authors_c['upload_datetime'] = self.run_dt
+            self._save_batch_data(submissions=submissions, comments=comments,
+                                  authors=concat([authors_s, authors_c]))
 
-                self._save_batch_data(submissions=submissions, comments=comments,
-                                      authors=concat([authors_s, authors_c]))
-
-                logging.info(
-                    f'Current timestamp = {datetime.fromtimestamp(self.current)} - Elapsed time = {str(timedelta(seconds=time.time() - start))}')
-
-            except Exception as e:
-                self.current = self.current_recovery
-                logging.error("Exception occurred", exc_info=True)
-                logging.error(
-                    f'FOR RECOVERY : Current Epoch (current timestamp) = {self.current} ({datetime.fromtimestamp(self.current)})')
+            logging.info(
+                f'Current timestamp = {datetime.fromtimestamp(self.current)} - Elapsed time = {str(timedelta(seconds=time.time() - start))}')
 
     def _search_and_format_submissions(self, subreddit: str, batch_size: int, ignore_flairs: list = None) -> list:
         submissions = requests.get(
@@ -380,7 +371,6 @@ class RedditExtractor():
 
         data = data.loc[~data['selftext'].isin(['[deleted]', '[removed]'])].copy()
 
-        self.current_recovery = self.current
         self.current = data['created_utc'].min()
 
         data['full_id'] = self.subreddit_id + data['id']

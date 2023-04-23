@@ -15,7 +15,6 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     logging.basicConfig(
-        filename=Path(__file__).parent / f'logs/streaming_{args.type}.log',
         format='%(asctime)s - %(message)s',
         datefmt='%d-%m-%Y %H:%M:%S',
         level=logging.INFO

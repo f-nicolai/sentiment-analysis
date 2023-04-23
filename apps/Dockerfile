@@ -29,3 +29,4 @@ COPY ./../apps /app/apps
 ENV PATH="/opt/sentiment-analysis/bin:${PATH}"
 
 WORKDIR /app/apps
+

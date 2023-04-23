@@ -1,6 +1,3 @@
-import sys
-from pathlib import Path
-
 from reddit_extractor.reddit import RedditExtractor
 from helpers.subreddit_information import all_subreddits, submission_sorting, subreddit_flairs_to_ignore
 

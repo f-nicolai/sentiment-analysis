@@ -14,7 +14,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--mode", help="mode for historical data retrieval: full or ltw (last two weeks)")
 
 logging.basicConfig(
-    filename=Path(__file__).parent / f'logs/reddit_historical_extraction.log',
     format='%(asctime)s - %(message)s',
     datefmt='%d-%m-%Y %H:%M:%S',
     level=logging.INFO
