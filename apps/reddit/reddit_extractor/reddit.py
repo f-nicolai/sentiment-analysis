@@ -13,13 +13,7 @@ from sa_tools.miscellaneous import timeit
 from sa_tools.gcp import create_bq_table_from_dataframe, upload_dataframe_to_gcs, upload_dict_to_gcs
 from sa_tools.ticker_detection import detect_tickers
 
-if environ.get('GCF_ENV'):
-    REDDIT_PERSONAL_USE_SCRIPT = environ.get('REDDIT_PERSONAL_USE_SCRIPT')
-    REDDIT_SECRET = environ.get('REDDIT_SECRET')
-    REDDIT_PERSONAL_PASSWORD = environ.get('REDDIT_PERSONAL_PASSWORD')
-    REDDIT_USERNAME = environ.get('REDDIT_USERNAME')
-else:
-    from api_secrets import *
+from sa_tools.api_secrets import *
 
 comments_features = ['body', 'link_id', 'id', 'fullname', 'parent_id', 'body', 'score', 'ups', 'downs', 'created_utc',
                      'author_fullname', 'author']
@@ -382,10 +376,7 @@ class RedditExtractor():
                 not (bool(ignore_flairs)) or x['link_flair_text'] not in ignore_flairs]
 
     def _format_submissions(self, submissions: list, is_daily: bool = False) -> (DataFrame, DataFrame):
-        try:
-            data = DataFrame([{k: v for k, v in x.items() if k in submissions_features} for x in submissions])
-        except:
-            print('yolo')
+        data = DataFrame([{k: v for k, v in x.items() if k in submissions_features} for x in submissions])
 
         data = data.loc[~data['selftext'].isin(['[deleted]', '[removed]'])].copy()
 
@@ -476,7 +467,6 @@ class RedditExtractor():
         response = requests.get(url=url)
 
         while response.status_code in (429, 524):
-            print(f'{datetime.now().strftime("%Y-%m-%d %H:%M:%S")} - {response.status_code} - {datetime.fromtimestamp(self.current)} - {url}')
             time.sleep(2)
             response = requests.get(url=url)
 

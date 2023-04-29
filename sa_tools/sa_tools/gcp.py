@@ -87,10 +87,10 @@ def create_bq_table_from_dataframe(
 def remove_previous_reddit_data_updates(table:str, project:str='sentiment-analysis-379718'):
     query = f"""
         create or replace table `{project}.reddit.{table}` as
-            select *, except(rank_update)
+            select * except(rank_update)
             from (
                 select *, 
-                row_number() over(partition by id order by upload_datetime desc) as rank_update
+                row_number() over(partition by {'id' if table != 'authors' else 'fullname'} order by upload_datetime desc) as rank_update
                 from `{project}.reddit.{table}`
             )
             where rank_update = 1

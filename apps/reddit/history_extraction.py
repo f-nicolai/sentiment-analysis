@@ -4,10 +4,8 @@ import sys
 from pathlib import Path
 import argparse
 
-sys.path.append(f'{Path(__file__).parent.parent.parent}')
-
 from reddit_extractor.reddit import RedditExtractor
-from utils.gcp import remove_previous_reddit_data_updates, upload_dict_to_gcs
+from sa_tools.gcp import remove_previous_reddit_data_updates, upload_dict_to_gcs
 from helpers.failure_recovery import retrieve_logs_and_setup_dates_for_historical
 from helpers.subreddit_information import subreddit_flairs_to_ignore
 
@@ -42,16 +40,16 @@ if __name__ == '__main__':
         for tbl in ['authors', 'submissions', 'comments']:
             remove_previous_reddit_data_updates(table=tbl, project='sentiment-analysis-379718')
 
-        # Clearing logs
-        upload_dict_to_gcs(
-            dictionary={
-                'start_date': None,
-                'current_date': None,
-                'current_subreddit': None
-            },
-            bucket_name='intraday-data-extraction',
-            file_name=f'reddit/historical_extraction/log_last_current_date_{args.mode}.json',
-            project='sentiment-analysis-379718'
-        )
-
         logging.info(f'Last extracted Submission date: {datetime.datetime.fromtimestamp(r_client.current)}')
+
+    # Clearing logs
+    upload_dict_to_gcs(
+        dictionary={
+            'start_date': None,
+            'current_date': None,
+            'current_subreddit': None
+        },
+        bucket_name='intraday-data-extraction',
+        file_name=f'reddit/historical_extraction/log_last_current_date_{args.mode}.json',
+        project='sentiment-analysis-379718'
+    )

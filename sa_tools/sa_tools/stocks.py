@@ -4,7 +4,7 @@ from pandas import DataFrame, concat, read_csv, to_datetime
 from alpha_vantage.timeseries import TimeSeries
 from itertools import product
 
-from api_secrets import ALPHA_VANTAGE_API_KEY
+from sa_tools.api_secrets import ALPHA_VANTAGE_API_KEY
 
 
 def prices_for_ticker(ticker: str, interval: str, adjusted: bool, mode: str) -> DataFrame:
