@@ -15,12 +15,12 @@ from sa_tools.ticker_detection import detect_tickers
 
 from sa_tools.api_secrets import *
 
-comments_features = ['body', 'link_id', 'id', 'fullname', 'parent_id', 'body', 'score', 'ups', 'downs', 'created_utc',
+comments_features = ['body', 'link_id', 'id', 'fullname', 'parent_id', 'body', 'score', 'created_utc',
                      'author_fullname', 'author']
 submissions_features = [
     'id', 'fullname', 'link_flair_text', 'author_fullname', 'title', 'selftext', 'created_utc', 'distinguished',
     'is_self',
-    'permalink', 'score', 'upvote_ratio', 'ups', 'downs', 'stickied', 'num_comments', 'author', 'flair'
+    'permalink', 'score', 'upvote_ratio',  'stickied', 'num_comments', 'author', 'flair'
 ]
 
 
@@ -38,6 +38,7 @@ class RedditExtractor():
         self.until: int = None
         self.since: int = None
         self.current: int = None
+        self.initial:int = None
         self.extract_day: str = None
         self.extract_timestamp: str = None
         self.submissions_sorting: str = None
@@ -55,12 +56,14 @@ class RedditExtractor():
             new_submission, _ = self._submission_data_extraction(submission=sub, with_comments=False)
 
             if bool(new_submission):
-                new_submission, author = [x.to_dict(orient='records')[0] for x in self._format_submissions([new_submission], is_daily=True)]
+                new_submission, author = [x.to_dict(orient='records')[0] for x in
+                                          self._format_submissions([new_submission], is_daily=True)]
 
                 file_date = new_submission['created_utc']
                 new_submission['created_utc'] = new_submission['created_utc'].isoformat()
 
-                logging.info(f'Upload submission id : {new_submission["id"]} - created_utc: {new_submission["created_utc"]}')
+                logging.info(
+                    f'Upload submission id : {new_submission["id"]} - created_utc: {new_submission["created_utc"]}')
 
                 upload_dict_to_gcs(
                     dictionary=new_submission,
@@ -85,7 +88,8 @@ class RedditExtractor():
             new_comment = self._comment_data_extraction(comment=com)
 
             if bool(new_comment):
-                new_comment, author = [x.to_dict(orient='records')[0] for x in self._format_comments([new_comment], is_daily=True)]
+                new_comment, author = [x.to_dict(orient='records')[0] for x in
+                                       self._format_comments([new_comment], is_daily=True)]
 
                 file_date = new_comment['created_utc']
                 new_comment['created_utc'] = new_comment['created_utc'].isoformat()
@@ -105,11 +109,14 @@ class RedditExtractor():
                     project='sentiment-analysis-379718'
                 )
 
-    def historical_submissions_and_comments(self, subreddit: str, start_date: datetime, end_date: datetime, mode: str,
-                                            ignore_flairs: list = None, batch_size: int = 1000):
-        logging.info(f'Retrieving Submissions for {subreddit.upper()} from {start_date} to {end_date}')
+    def historical_submissions_and_comments(
+            self, subreddit: str, start_date: datetime, current_date: datetime, initial_date: datetime, mode: str,
+            ignore_flairs: list = None,  batch_size: int = 1000
+    ):
+        logging.info(f'Retrieving Submissions for {subreddit.upper()} from {start_date} to {current_date} (intially {initial_date})')
 
-        self.until = int(end_date.timestamp())
+        self.until = int(current_date.timestamp())
+        self.initial = int(initial_date.timestamp())
         self.since = int(start_date.timestamp())
         self.current = self.until
         self.mode = mode
@@ -150,8 +157,7 @@ class RedditExtractor():
 
     @timeit
     def _subreddit_data(self, subreddit: praw.models.reddit.subreddit.Subreddit, submissions_sorting: str,
-                        ignore_flairs: list = None, with_comments: bool = True, focus_on_flairs: list = None,
-                        submissions_creation_date_limit: datetime = None) -> (dict, list, list):
+                        ignore_flairs: list = None, with_comments: bool = True) -> (dict, list, list):
 
         self.subreddit_id = subreddit.id
         subreddit_data = {}
@@ -210,7 +216,8 @@ class RedditExtractor():
             comments_data = [
                 self._comment_data_extraction(comment=comment)
                 for comment in submission.comments.list()
-                if comment.author and ((comment.author.name != 'VisualMod') or (comment.author.fullname != 't2_6hf2z55l'))]
+                if
+                comment.author and ((comment.author.name != 'VisualMod') or (comment.author.fullname != 't2_6hf2z55l'))]
         else:
             comments_data = []
 
@@ -258,7 +265,8 @@ class RedditExtractor():
 
         return author_data
 
-    def _save_intraday_data(self, subreddit: str, submissions: DataFrame, authors: DataFrame = None, comments: DataFrame = None):
+    def _save_intraday_data(self, subreddit: str, submissions: DataFrame, authors: DataFrame = None,
+                            comments: DataFrame = None):
         logging.info(f'Uploading submissions : {submissions.shape[0]}')
         upload_dataframe_to_gcs(
             dataframe=submissions,
@@ -316,6 +324,7 @@ class RedditExtractor():
             dictionary={
                 'start_date': int(self.since),
                 'current_date': int(self.current),
+                'initial_date': int(self.initial),
                 'current_subreddit': subreddit
             },
             bucket_name='intraday-data-extraction',
@@ -331,7 +340,7 @@ class RedditExtractor():
         while self.current >= self.since:
             start = time.time()
 
-            raw_submissions = submissions = self._search_and_format_submissions(
+            raw_submissions = self._search_and_format_submissions(
                 subreddit=subreddit,
                 ignore_flairs=ignore_flairs,
                 batch_size=batch_size
@@ -340,26 +349,32 @@ class RedditExtractor():
 
             submissions, authors_s = self._format_submissions(submissions=raw_submissions)
 
-            logging.info(f'Retrieved {submissions.shape[0]} submissions in: {str(timedelta(seconds=time.time() - start))}')
-
-            comments, authors_c = self._format_comments(
-                comments=self._search_comments_from_submissions_ids(
-                    submissions_ids=submissions['id'].to_list(),
-                )
-            )
-            logging.info(f'Retrieved {comments.shape[0]} comments in: {str(timedelta(seconds=time.time() - start))}')
-
-            submissions['upload_datetime'] = self.run_dt
-            authors_s['upload_datetime'] = self.run_dt
-            comments['upload_datetime'] = self.run_dt
-            authors_c['upload_datetime'] = self.run_dt
-
-            self._save_batch_data(submissions=submissions, comments=comments,
-                                  authors=concat([authors_s, authors_c]))
-
             logging.info(
-                f'Current timestamp = {datetime.fromtimestamp(self.current)} - Elapsed time = {str(timedelta(seconds=time.time() - start))}')
+                f'Retrieved {submissions.shape[0]} submissions in: {str(timedelta(seconds=time.time() - start))}')
 
+            if submissions.shape[0] > 0:
+                comments, authors_c = self._format_comments(
+                    comments=self._search_comments_from_submissions_ids(
+                        submissions_ids=submissions['id'].to_list(),
+                    )
+                )
+                logging.info(f'Retrieved {comments.shape[0]} comments in: {str(timedelta(seconds=time.time() - start))}')
+
+                submissions['upload_datetime'] = self.run_dt
+                authors_s['upload_datetime'] = self.run_dt
+                comments['upload_datetime'] = self.run_dt
+                authors_c['upload_datetime'] = self.run_dt
+
+                self._save_batch_data(submissions=submissions, comments=comments,
+                                      authors=concat([authors_s, authors_c]))
+
+                self.save_current_date_to_gcs(subreddit=subreddit)
+
+                logging.info(
+                    f'Current timestamp = {datetime.fromtimestamp(self.current)} - Elapsed time = {str(timedelta(seconds=time.time() - start))}')
+            else:
+                logging.info(f'Reached maximum depth')
+                break
     def _search_and_format_submissions(self, subreddit: str, batch_size: int, ignore_flairs: list = None) -> list:
         submissions = requests.get(
             url=f'https://api.pushshift.io/reddit/submission/search?subreddit={subreddit}&size={batch_size}&before={self.current}')
@@ -414,7 +429,8 @@ class RedditExtractor():
         data['detected_tickers'] = detect_tickers(data['tmp'])
 
         data['number_detected_tickers'] = 0
-        data.loc[~data['detected_tickers'].isnull(), 'number_detected_tickers'] = data.loc[~data['detected_tickers'].isnull()]['detected_tickers'].str.split('|').apply(len)
+        data.loc[~data['detected_tickers'].isnull(), 'number_detected_tickers'] = \
+            data.loc[~data['detected_tickers'].isnull()]['detected_tickers'].str.split('|').apply(len)
 
         data = data.drop('tmp', axis=1)
 

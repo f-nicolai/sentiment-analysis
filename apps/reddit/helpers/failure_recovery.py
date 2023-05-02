@@ -13,7 +13,7 @@ def retrieve_logs_and_setup_dates_for_historical(mode: str) -> (datetime, dateti
             project='sentiment-analysis-379718'
         ))
     except NotFound:
-        logs = {'start_date': None, 'current_date': None, 'current_subreddit': None}
+        logs = {'start_date': None, 'current_date': None, 'initial_date':None, 'current_subreddit': None}
 
     if bool(logs.get('start_date')):
         start_date = datetime.fromtimestamp(logs['start_date'])
@@ -24,12 +24,17 @@ def retrieve_logs_and_setup_dates_for_historical(mode: str) -> (datetime, dateti
             start_date = datetime.now() - timedelta(days=15)
 
     if bool(logs.get('current_date')):
-        end_date = datetime.fromtimestamp(logs['current_date'])
+        current_date = datetime.fromtimestamp(logs['current_date'])
     else:
-        end_date = datetime.now()
+        current_date = datetime.now()
+
+    if bool(logs.get('initial_date')):
+        initial_date = datetime.fromtimestamp(logs['initial_date'])
+    else:
+        initial_date = current_date
 
     subreddits = all_subreddits.copy()
     if logs.get('current_subreddit'):
         subreddits = subreddits[subreddits.index(logs['current_subreddit']):]
 
-    return start_date, end_date, subreddits
+    return start_date, current_date, initial_date, subreddits

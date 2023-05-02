@@ -1,7 +1,7 @@
 import openai
 import numpy as np
 
-from api_secrets import *
+from sa_tools.api_secrets import *
 
 openai.api_key = OPEN_AI_SECRET_KEY
 

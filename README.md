@@ -81,11 +81,11 @@ Cloud Function :
 
 Docker :
   - Build image from project root`sudo docker build --force-rm -t data_extraction:latest -f apps/Dockerfile .`
-  - Retrieve historical data : `sudo docker run -d --name historical_full --restart=on-failure data_extraction python apps/reddit/history_extraction.py --mode=full`
-  - (Scheduled daily) Retrieve historical on last 2 weeks : `sudo docker run -d --name historical_ltw --restart=on-failure data_extraction python apps/reddit/history_extraction.py --mode=ltw`
-  - (Scheduled every 10mn) Retrieve last submissions metadata : `sudo docker run -d --name submissions_metadata_update --restart=on-failure data_extraction python apps/reddit/update_submissions_metadata.py`
-  - Stream submissions : `sudo docker run -d --name wsb_submissions --restart=unless-stopped data_extraction python apps/reddit/streaming_data.py --type=submissions --subreddit=wallstreetbets`
-  - Stream comments : `sudo docker run -d --name wsb_comments --restart=unless-stopped data_extraction python apps/reddit/streaming_data.py --type=comments --subreddit=wallstreetbets`
+  - Retrieve historical data : `sudo docker run -d --name historical_full --restart=on-failure data_extraction python reddit/history_extraction.py --mode=full`
+  - (Scheduled daily) Retrieve historical on last 2 weeks : `sudo docker run -d --name historical_ltw --restart=on-failure data_extraction python reddit/history_extraction.py --mode=ltw`
+  - (Scheduled every 10mn) Retrieve last submissions metadata : `sudo docker run -d --rm --name submissions_metadata_update data_extraction python reddit/update_submissions_metadata.py`
+  - Stream submissions : `sudo docker run -d --name wsb_submissions --restart=unless-stopped data_extraction python reddit/streaming_data.py --type=submissions --subreddit=wallstreetbets`
+  - Stream comments : `sudo docker run -d --name wsb_comments --restart=unless-stopped data_extraction python reddit/streaming_data.py --type=comments --subreddit=wallstreetbets`
   - 
   - (daily schedule) Clean all unused images & containers `sudo docker system prune -f`
   - Delete images with pattern  `sudo docker images -a | grep "<none>" | awk '{print $3}' | xargs sudo docker rmi`
